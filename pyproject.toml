@@ -1,0 +1,15 @@
+[build-system]
+build-backend = 'setuptools.build_meta'
+requires = [
+    'setuptools',
+]
+
+[project]
+name = "nebari_tf_profile"
+version = "0.0.1"
+dependencies = [
+    "nebari"
+]
+
+[project.entry-points.nebari]
+nebari-tf-profile = "nebari_tf_profile"
