@@ -1,5 +1,7 @@
 import logging
 import io
+import platform
+import sys
 import tempfile
 import urllib
 import zipfile
@@ -25,7 +27,7 @@ def download_tf_profile_binary(version=constants.TF_PROFILE_VERSION):
     }
 
     _source = "https://github.com/datarootsio/tf-profile/releases"
-    download_url = f"{_source}/download/{version}/tf-profle-{version}-{os_mapping[sys.platform]}-{architecture_mapping[platform.machine()]}.zip"
+    download_url = f"{_source}/download/{version}/tf-profile-{version}-{os_mapping[sys.platform]}-{architecture_mapping[platform.machine()]}.zip"
     
     filename_directory = Path(tempfile.gettempdir()) / "tf-profile" / version
     filename_path = filename_directory / "tf-profile"
