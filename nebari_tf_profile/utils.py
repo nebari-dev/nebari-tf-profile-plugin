@@ -28,12 +28,15 @@ def download_tf_profile_binary(version=constants.TF_PROFILE_VERSION):
 
     _source = "https://github.com/datarootsio/tf-profile/releases"
     download_url = f"{_source}/download/{version}/tf-profile-{version}-{os_mapping[sys.platform]}-{architecture_mapping[platform.machine()]}.zip"
-    
+
     filename_directory = Path(tempfile.gettempdir()) / "tf-profile" / version
     filename_path = filename_directory / "tf-profile"
 
     if not filename_path.is_file():
         logger.info(
+            f"downloading and extracting terraform binary from url={download_url} to path={filename_path}"
+        )
+        print(
             f"downloading and extracting terraform binary from url={download_url} to path={filename_path}"
         )
         with urllib.request.urlopen(download_url) as f:
