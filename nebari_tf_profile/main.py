@@ -1,6 +1,7 @@
 import contextlib
 import os
 import subprocess
+from pathlib import Path
 from typing import Any, Dict
 
 from nebari.hookspecs import NebariStage
@@ -25,7 +26,8 @@ class TFProfileStage(NebariStage):
 
     def _get_reports_output_dir(self):
         _ = os.environ.get(
-            "NEBARI_REPORTS_OUTPUT_DIR", os.path.join(os.getcwd(), "reports")
+            "NEBARI_TF_PROFILE_RESULTS_PATH",
+            os.path.join(os.getcwd(), "tf-profile-reports"),
         )
         try:
             os.makedirs(_, exist_ok=True)
@@ -47,25 +49,85 @@ class TFProfileStage(NebariStage):
             _stage_log_filename(mode="apply", stage="03-kubernetes-initialize")
             Returns: terraform_apply_03-kubernetes-initialize.log
         """
-        return f"terraform_{mode}_{stage}.log"
+        output_dir = os.getenv("NEBARI_EXPORT_LOG_FILES_PATH", Path.cwd().as_posix())
+        _last_timestamp_log_dir = sorted(
+            Path(output_dir).iterdir(), key=os.path.getmtime
+        )[-1]
+
+        return (
+            Path(output_dir) / _last_timestamp_log_dir / f"terraform_{mode}_{stage}.log"
+        )
+
+    def _run_tf_profile_subcommand(
+        self, binary_path, subcommand: str, stage: str, mode: str, output_filename: Path
+    ):
+        """
+        _summary_
+
+        Parameters
+        ----------
+        binary_path : _type_
+            _description_
+        subcommand : str
+            _description_
+        stage : str
+            _description_
+        mode : str
+            _description_
+        output_filename : Path
+            _description_
+        """
+        _stage_name = stage.split("/")[-1]
+        with open(output_filename, "a") as f:
+            subprocess.call(
+                [
+                    binary_path,
+                    subcommand,
+                    self._stage_log_filename(mode=mode, stage=_stage_name),
+                ],
+                stdout=f,
+            )
+
+    def _create_markdown_report(self, filenames: dict[str, list[str]]):
+        """
+        _summary_
+
+        Parameters
+        ----------
+        stage_name : str
+            _description_
+        contents : str
+            _description_
+        """
+        # write some logic to add the contents of a file inside the following html component: <Details><Summary>here goes stage name</Summary>```Here goes the contents of the file```</Details>
+
+        _output_filename = f"{self._reports_output_dir}/report.md"
+        with open(_output_filename, "w") as f:
+            for stage_name, files in filenames.items():
+                f.write(f"<Details><Summary>{stage_name}</Summary>")
+                for file in files:
+                    with open(file, "r") as _f:
+                        f.write(f"```{_f.read()}```")
+                f.write("</Details>")
 
     def _run_tf_profile(self, mode=["apply", "destroy"]):
         binary_path = download_tf_profile_binary(version=TF_PROFILE_VERSION)
 
+        filenames = {}
         for stage in self._get_stages():
             _stage_name = stage.split("/")[-1]
-            _report_filename = f"{self._reports_output_dir}/{_stage_name}.report"
-            with open(_report_filename, "w") as f:
-                subprocess.call(
-                    [
-                        binary_path,
-                        "stats",
-                        self._stage_log_filename(mode=mode, stage=_stage_name),
-                    ],
-                    stdout=f,
+            filenames[_stage_name] = []
+            for subcommand in ["stats", "table"]:
+                _output_filename = (
+                    f"{self._reports_output_dir}/{_stage_name}.{subcommand}"
+                )
+                filenames[_stage_name].append(_output_filename)
+                self._run_tf_profile_subcommand(
+                    binary_path, subcommand, stage, mode, _output_filename
                 )
 
-    # Error: open terraform_apply_01-terraform-state.log: no such file or directory
+        if os.getenv("NEBARI_TF_PROFILE_CREATE_REPORT"):
+            self._create_markdown_report(filenames)
 
     def _get_stages(self):
         return self._stages
