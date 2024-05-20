@@ -50,7 +50,9 @@ class TFProfileStage(NebariStage):
 
     def _run_tf_profile(self, mode=["apply", "destroy"]):
         with tempfile.TemporaryDirectory(delete=False) as tmp_dir:
-            binary_path = download_tf_profile_binary(version="0.1.0")
+            # We call this function every time we need to run tf-profile
+            # but it won't download the binary if it already exists.
+            binary_path = download_tf_profile_binary(version="v0.4.0")
 
             for stage in self._get_stages():
                 _report_filename = f"{self._reports_output_dir}/{stage}.report"
